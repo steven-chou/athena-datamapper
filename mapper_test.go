@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/athena/types"
-	"github.com/kent-id/athenaconv/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/steven-chou/athena-datamapper/util"
 )
 
 type validModel struct {

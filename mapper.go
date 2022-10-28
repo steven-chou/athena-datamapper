@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/aws/aws-sdk-go-v2/service/athena/types"
+	"github.com/pkg/errors"
 )
 
 type dataMapper struct {
@@ -56,6 +57,8 @@ func (m *dataMapper) FromAthenaResultSetV2(ctx context.Context, resultSet *types
 		return nil, err
 	}
 
+	fieldNameToStructField := make(map[string]reflect.StructField)
+
 	result := make([]interface{}, 0)
 	for _, row := range resultSet.Rows {
 		model := reflect.New(m.modelType)
@@ -63,16 +66,76 @@ func (m *dataMapper) FromAthenaResultSetV2(ctx context.Context, resultSet *types
 			mappedColumnInfo := resultSetSchema[athenaColName]
 			fieldName := modelDefColInfo.fieldName
 
-			// log.Printf("SET model.%s = row.Data[%d] with athena col name = '%s'", fieldName, mappedColumnInfo.index, athenaColName)
-			colData, err := castAthenaRowData(ctx, row.Data[mappedColumnInfo.index], mappedColumnInfo.athenaColumnType)
+			var targetVal interface{}
+			fieldData := row.Data[mappedColumnInfo.index]
+
+			if fieldData.VarCharValue != nil {
+				// log.Printf("SET model.%s = row.Data[%d] with athena col name = '%s'", fieldName, mappedColumnInfo.index, athenaColName)
+				targetVal, err = castAthenaRowData(ctx, fieldData, mappedColumnInfo.athenaColumnType)
+				if err != nil {
+					return nil, err
+				}
+			}
+			var sf reflect.StructField
+			if v, ok := fieldNameToStructField[fieldName]; !ok {
+				sf, _ = m.modelType.FieldByName(fieldName)
+				fieldNameToStructField[fieldName] = sf
+			} else {
+				sf = v
+			}
+
+			err := setRowFieldValToTargetField(model, sf, targetVal)
 			if err != nil {
 				return nil, err
 			}
-			model.Elem().FieldByName(fieldName).Set(reflect.ValueOf(colData))
 		}
 
 		result = append(result, model.Interface())
 	}
 
 	return result, nil
+}
+
+func setRowFieldValToTargetField(targetObj reflect.Value, targetField reflect.StructField, val interface{}) error {
+	if val == nil {
+		// ignore the nil val, so the target field will remain as initial zero value
+		return nil
+	}
+
+	srcVal := reflect.ValueOf(val)
+
+	if srcVal.Kind() == targetField.Type.Kind() {
+		targetObj.Elem().FieldByName(targetField.Name).Set(srcVal)
+		return nil
+	}
+
+	// src and target are different types
+	switch targetField.Type.Kind() {
+	case reflect.Pointer:
+		switch srcVal.Kind() {
+		case reflect.String, reflect.Bool,
+			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+			reflect.Float32, reflect.Float64, reflect.Struct:
+			v := reflect.New(targetField.Type.Elem())
+			v.Elem().Set(srcVal)
+			targetObj.Elem().FieldByName(targetField.Name).Set(v)
+		default:
+			return errors.Errorf("can't set source value %v type to the ptr field", srcVal.Kind().String())
+		}
+	case reflect.String, reflect.Bool,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64, reflect.Struct:
+		switch srcVal.Kind() {
+		case reflect.Pointer:
+			targetObj.Elem().FieldByName(targetField.Name).Set(reflect.Indirect(srcVal))
+		default:
+			return errors.Errorf("can't set source value %v type to the %v field", srcVal.Kind().String(), targetField.Type.Kind().String())
+		}
+	default:
+		return errors.Errorf("incompatible source value and target field type: [%v -> %v]", srcVal.Kind().String(), targetField.Type.Kind().String())
+	}
+
+	return nil
 }

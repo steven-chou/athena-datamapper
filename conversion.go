@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/athena/types"
-	"github.com/kent-id/athenaconv/util"
+	"github.com/steven-chou/athena-datamapper/util"
 )
 
 func castAthenaRowData(ctx context.Context, rowData types.Datum, athenaType string) (interface{}, error) {

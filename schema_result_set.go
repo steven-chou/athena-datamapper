@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/athena/types"
-	"github.com/kent-id/athenaconv/util"
+	"github.com/steven-chou/athena-datamapper/util"
 )
 
 // resultSetDefinitionMap is a map of athenaColName to each column returned by atena queries
