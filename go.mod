@@ -1,4 +1,4 @@
-module github.com/kent-id/athenaconv
+module github.com/steven-chou/athena-datamapper
 
 go 1.16
 

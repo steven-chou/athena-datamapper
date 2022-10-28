@@ -1,7 +1,7 @@
 # common files
 .DS_Store
 profile.cov
-
+*.iml
 # binaries
 examples/simple/simple
 examples/client_with_channels/client_with_channels

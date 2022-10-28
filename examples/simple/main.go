@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/athena"
 	"github.com/aws/aws-sdk-go-v2/service/athena/types"
-	"github.com/kent-id/athenaconv"
-	"github.com/kent-id/athenaconv/util"
+	"github.com/steven-chou/athena-datamapper"
+	"github.com/steven-chou/athena-datamapper/util"
 )
 
 const (
